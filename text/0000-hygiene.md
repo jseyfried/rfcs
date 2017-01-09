@@ -114,13 +114,48 @@ This should get into specifics and corner-cases, and include examples of how the
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
 
-What names and terminology work best for these concepts and why? 
-How is this idea best presented—as a continuation of existing Rust patterns, or as a wholly new one?
+- How is this idea best presented—as a continuation of existing Rust patterns, or as a wholly new one?
 
-Would the acceptance of this proposal change how Rust is taught to new users at any level? 
-How should this feature be introduced and taught to existing Rust users?
+  As macros 2.0 is supposed to replace today's macros, its best if we teach them from scratch without reference to the old system.
 
-What additions or changes to the Rust Reference, _The Rust Programming Language_, and/or _Rust by Example_ does it entail?
+- What names and terminology work best for these concepts and why?
+
+  Little new terminology over macros 1 is needed.
+  Hygiene is the principle that renaming things doesn't change their meaning---previous valid programs might become invalid if too many identifiers are renamed the same,
+
+  The standard programming language terminology is thankfully not too exotic sounding in this case, but does make some distinctions not popularly observed.
+  A classic example is *identifier* vs *variable*: an "identifier" is a very crude concept, and is well defined even for simple "token trees" where there is no notion of binding even, while a variable has more semantic baggage and
+
+- Would the acceptance of this proposal change how Rust is taught to new users at any level?
+
+  *Defining* macros would remain a skill unneeded by beginners just as it is today.
+  There are some macros that even beginers *use* (panicking, printing, etc), but as they return an expression they are easy to use without understand the macro system.
+  This would also not change.
+
+- What additions or changes to the Rust Reference, _The Rust Programming Language_, and/or _Rust by Example_ does it entail?
+
+  Any existing documentation of the old macro system would be adapted for this.
+
+- How should this feature be introduced and taught to existing Rust users?
+
+  The key virtue of hygiene is one can completely resolve names (decide whether an identifier is a fresh binding or resolves to another binding sites looking at the macro body alone.
+  This sounds fancy, but is no different on how normal rust is lexically scoped---identifiers in the function are resolved regardless of how it is called.
+
+  Doing this is actually fairly simple.
+  If the identifier looks different—e.g. rust variable `foo` vs "$-prefixed macro variable `$foo`—then it must resolve separately.
+  In fact, one can pretend that "$" were allowed in normal rust identifiers, and read the macro body as normal Rust code—the resulting name resolution is entirely that!
+
+  Only when reasoning about macro *invocations* (as opposed to definitions) is extra knowledge unavoidable.
+  The overriding principle is one can up-front reason about any identifiers usable across the expansion site without knowing the details of the macro's definition.
+  Only identifiers passed in or bound in both over *both* expansion site and definition site can be used to "communicate" between the macro expansion and the code surrounds it.
+  We can break this "communication" down and treat each direction separately.
+  In the "out" direction, identifiers only bound over or inside the macro definition will never "leak" out of the expanded syntax and become in scope around the expansion site
+  In the "in" direction, identifiers only bound over the macro invocation site and not explicitly passed in will never leak into the expanded syntax and become in scope inside it.
+
+  An interesting aspect of the above however is its possible to "smuggle" identifiers out of a macro body with e.g. macros defined in the macro.
+  So far, hygiene has been described as purely more strict---disallowing more programs than would be allowed with it, but in this case it actually does the opposite allowing programs that would be otherwise disallowed.
+
+  All the above can be adapted for reasoning about privacy instead of scoping; the same rigid lexical principles apply.
 
 # Drawbacks
 [drawbacks]: #drawbacks
